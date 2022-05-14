@@ -1,0 +1,54 @@
+import torch as torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import numpy as np
+import pandas as pd
+from torch.utils.data import Dataset, DataLoader
+
+class SemanticDataset(Dataset):
+    '''
+    Class that loads and prepares the data for the model
+    The data that is processed is given in a file with questions and
+    respective questiond id as well as a file with the datapoints + label 
+    given as (qid1 qid2 label)
+    '''
+    def __init__(self, question_id_path, datapoint_path):
+        '''
+        Initializes the dataset with the given paths
+        '''
+        self.question_ids = {}                                      # dictionary with question ids as keys and question as values  
+        with open (question_id_path, 'r') as f:
+            for line in f:
+                line_content = line.strip().split(',',1)            # split line at first comma
+                qid_as_int = int(line_content[0])
+                question = line_content[1]
+                self.question_ids[qid_as_int] = question
+        
+        self.datapoints = np.array(pd.read_csv(datapoint_path))       # read in the data
+        
+    def __len__(self):
+        '''
+        Returns the length of the dataset
+        '''
+        return len(self.datapoints)
+    
+    def __getitem__(self, idx):
+        '''
+        Returns the item at the given index
+        '''
+        qid1 = self.datapoints[idx][0]
+        qid2 = self.datapoints[idx][1]
+        label = self.datapoints[idx][2]
+        question1 = self.question_ids[qid1]
+        question2 = self.question_ids[qid2]
+        return (question1, question2), label
+        
+    
+
+# Main class to test
+dataset = SemanticDataset('data/question_ids.txt', 'data/datapoints.txt')
+train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+train_features, train_labels = next(iter(train_dataloader))
+print(len(train_features))
+print(train_features[0])
