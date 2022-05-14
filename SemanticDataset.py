@@ -36,13 +36,17 @@ class SemanticDataset(Dataset):
     def __getitem__(self, idx):
         '''
         Returns the item at the given index
+        Currrently returns a tuple with two lists with size batch_size 
+        tuple(0) is a list of batch size with the first question for each datapoint
+        tuple(1) is a list of batch size with the second question for each datapoint
+        labels is a list of batch size with the label for each datapoint
         '''
         qid1 = self.datapoints[idx][0]
         qid2 = self.datapoints[idx][1]
         label = self.datapoints[idx][2]
         question1 = self.question_ids[qid1]
         question2 = self.question_ids[qid2]
-        return (question1, question2), label
+        return (question1, question2), label    
         
     
 
@@ -51,4 +55,4 @@ dataset = SemanticDataset('data/question_ids.txt', 'data/datapoints.txt')
 train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
 train_features, train_labels = next(iter(train_dataloader))
 print(len(train_features))
-print(train_features[0])
+print(len(train_features[0]))
