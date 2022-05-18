@@ -1,10 +1,18 @@
+import sys
 import torch as torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import nltk
+from nltk import word_tokenize
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
+
+
+PADDING_WORD = '<PAD>'
+
+
 
 class SemanticDataset(Dataset):
     '''
@@ -18,7 +26,7 @@ class SemanticDataset(Dataset):
         Initializes the dataset with the given paths
         '''
         self.question_ids = {}                                      # dictionary with question ids as keys and question as values  
-        with open (question_id_path, 'r') as f:
+        with open (question_id_path, 'r', encoding = 'utf-8') as f:
             for line in f:
                 line_content = line.strip().split(',',1)            # split line at first comma
                 qid_as_int = int(line_content[0])
@@ -44,15 +52,13 @@ class SemanticDataset(Dataset):
         qid1 = self.datapoints[idx][0]
         qid2 = self.datapoints[idx][1]
         label = self.datapoints[idx][2]
-        question1 = self.question_ids[qid1]
-        question2 = self.question_ids[qid2]
-        return (question1, question2), label    
+        question1 = word_tokenize(self.question_ids[qid1]) # tokenize the question into a list of words
+        question2 = word_tokenize(self.question_ids[qid2])
+        print("question1:", question1, " with length:", len(question1))
+        print("question2:", question2, " with length:", len(question2))
+        return [question1, question2], label    
         
     
 
 # Main class to test
 dataset = SemanticDataset('data/question_ids.txt', 'data/datapoints.txt')
-train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
-train_features, train_labels = next(iter(train_dataloader))
-print(len(train_features))
-print(len(train_features[0]))
