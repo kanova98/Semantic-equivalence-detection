@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 
 DATAPOINT_PATH = 'data/datapoints.txt'
 GLOVE_FILEPATH = 'glove_embeddings/glove.6B.100d.txt'
+MODEL_FILEPATH = 'model/model_early_stopping.pt'
 EPOCHS = 5
 
 if __name__ == '__main__':
@@ -35,11 +36,12 @@ if __name__ == '__main__':
     if args.train:
         
         # Train the model
-        model.train_model(train_sentences, train_labels, EPOCHS)
+        
+        model.train_model(train_sentences, train_labels, model_filepath=MODEL_FILEPATH, epochs=EPOCHS)
         
         model.evaluate_model(test_sentences, test_labels)
 
-        torch.save(model, 'models/model_5_epochs.pt')
+        
         
         
         

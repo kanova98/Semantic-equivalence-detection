@@ -3,6 +3,8 @@ import torch as torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
+# import lr scheduler from pytorch
+from torch.optim.lr_scheduler import ExponentialLR
 import numpy as np
 from SemanticDataset import SemanticDataset
 from torch.nn.utils import clip_grad_norm_
@@ -122,7 +124,7 @@ class RNN_model(nn.Module):
         return prob_class_1 
         
     
-    def train_model(self, sentences, labels, epochs, batch_size = 256):
+    def train_model(self, sentences, labels, epochs, model_filepath, batch_size = 256):
         
         train_sentences, val_sentences, train_labels, val_labels = train_test_split(sentences, labels, test_size=0.15, random_state=42)
         dataset_train = SemanticDataset(question_id_path=QUESTION_ID_PATH, datapoints = train_sentences, labels=train_labels) # create a dataset
@@ -132,13 +134,20 @@ class RNN_model(nn.Module):
         data_loader_validation = DataLoader(dataset_validation, batch_size=512, shuffle=True, collate_fn=PadSequence()) # create a dataloader
 
         validation_losses = []
+        prev_best_val_loss = float('inf')
+        non_improvement_count = 0
 
         # Define the loss function
         criterion = nn.MSELoss()
         # Define the optimizer
         optimizer = optim.Adam(self.parameters(), lr=0.001)
+        scheduler = ExponentialLR(optimizer, gamma=0.9)
         iters = 0
         for epoch in range(epochs):
+
+            if non_improvement_count > 2:
+                break
+
             self.train()
             for x,y in tqdm(data_loader_train, desc="Epoch {}".format(epoch)):
                 optimizer.zero_grad()
@@ -152,20 +161,29 @@ class RNN_model(nn.Module):
                 clip_grad_norm_(self.parameters(), 5)
                 optimizer.step()
                 iters += 1
-                
+            scheduler.step()
             print("Epoch {}: Training loss {}".format(epoch, loss))
 
             # calculate validation loss
             with torch.no_grad():
                 self.eval()
+                validation_loss = []
                 for x_val, y_val in data_loader_validation:
                     y_val_pred = self(x_val)
                     y_val = torch.tensor(y_val, dtype=torch.float)
-                    validation_loss = criterion(y_val_pred, y_val)
+                    validation_loss.append(criterion(y_val_pred, y_val))
+
+                validation_loss = torch.mean(validation_loss)
+
+                if validation_loss < prev_best_val_loss:
+                    prev_best_val_loss = validation_loss
+                    torch.save(self, model_filepath)
+                    non_improvement_count = 0
+                else:
+                    non_improvement_count += 1
 
                 validation_losses.append(validation_loss)
                 print("Epoch {}, validation loss: {}".format(epoch, validation_loss))
-
 
     def evaluate_model(self, test_data, test_labels):
         self.eval()
