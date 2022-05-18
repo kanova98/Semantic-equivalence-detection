@@ -13,22 +13,13 @@ class PadSequence:
     A callable used to merge a list of samples
     """
     def __call__(self, batch, pad_data=PADDING_WORD):
-        
         batch_data, batch_labels = zip(*batch)
-        print(len(batch_data))
-        print("batch_labels:", batch_labels)
-        # get the lengths of each sentence in the batch
+        # get the lengths of all first and second sentences of the batch
         first_question_max_length = max([len(sentence_pair[0]) for sentence_pair in batch_data])
-        print("first_question_max_length:", first_question_max_length)
         second_question_max_length = max([len(sentence_pair[1]) for sentence_pair in batch_data])
-        print("second_question_max_length:", second_question_max_length)
-        
         # pad the sentences
         padded_data_first_question = [[sentence[0][i] if i < len(sentence[0]) else pad_data for i in range(first_question_max_length)] for sentence in batch_data]
         padded_data_second_question = [[sentence[1][i] if i < len(sentence[1]) else pad_data for i in range(second_question_max_length)] for sentence in batch_data]
-        print("padded_data_first_question:", padded_data_first_question)
-        print("padded_data_second_question:", padded_data_second_question)
-
         return [padded_data_first_question, padded_data_second_question], batch_labels
 
 # Function taken from assignment 4 in DD2417 course
@@ -86,39 +77,53 @@ class RNN_model(nn.Module):
         self.word_embedding = nn.Embedding(vocab_size, self.word_emb_size, padding_idx=0)
         self.word_embedding.weight = nn.Parameter(torch.from_numpy(embeddings), requires_grad=False) # set the embedding weights to the GloVe embeddings and freeze them
 
-        self.gru = nn.GRU(self.word_emb_size, self.word_hidden_size, bidirectional=True)
+        self.gru = nn.GRU(self.word_emb_size, self.word_hidden_size, bidirectional=True, batch_first=True)
 
     def forward(self, sentences):
         '''
         :param      sentences:  A batch of question pairs. Given as (2, batch_size, max_sentence_length))
         where max_sentence_length is the maximum length for all sentences in the batch for each pair. 
         :type       sentences:  list
-        :returns:   The output of the RNN
+        :returns:   The manhattan distance between the final states of the forward and backward RNNs for each pair.
         :rtype:     torch.tensor
         '''
-        print("entered_here")
+        # Extract the batch of first and second questions
         first_questions = sentences[0]
         second_questions = sentences[1]
-        # convert the word indices to word vectors
-        first_questions_ids = [self.w2i[UNKNOWN_WORD] if word not in self.w2i else self.w2i[word] for batch in first_questions for word in batch ]
-        print("first_questions_ids:", first_questions_ids)
-        print(len(first_questions_ids))
-        print(len(first_questions_ids[0]))
+        # convert the question sentences into indeces
+        first_question_ids = torch.tensor([[self.w2i[UNKNOWN_WORD] if word not in self.w2i else self.w2i[word] for word in sentence] for sentence in first_questions], dtype=torch.long)
+        second_question_ids = torch.tensor([[self.w2i[UNKNOWN_WORD] if word not in self.w2i else self.w2i[word] for word in sentence] for sentence in second_questions], dtype=torch.long)
+        # Run the indices through the embedding layer
+        word_vectors_q1 = self.word_embedding(first_question_ids)
+        word_vectors_q2 = self.word_embedding(second_question_ids)
+        # The resulting tensor is of shape (batch_size, max_sentence_length, word_emb_size)
+        print("word_vectors_q1:", word_vectors_q1.shape)
+        print("word_vectors_q2:", word_vectors_q2.shape)
+
+        # Run the word vectors through the GRU
+        _, hidden_q1 = self.gru(word_vectors_q1)
+        _, hidden_q2 = self.gru(word_vectors_q2)
+        print("hidden_q1:", hidden_q1.shape)
+        print("hidden_q2:", hidden_q2.shape)
+        # Concatenate the final state from the forward and backward RNNs
+        hidden_q1 = torch.cat((hidden_q1[0], hidden_q1[1]), dim=1)
+        hidden_q2 = torch.cat((hidden_q2[0], hidden_q2[1]), dim=1)
+        print("hidden_q1:", hidden_q1.shape)
+        print("hidden_q2:", hidden_q2.shape)
         
-        sys.exit(0)
-        # run the word vectors through the RNN
-        output, _ = self.gru(word_vectors)
-        # return the output of the RNN
-        return output 
+        #Compute the similiarity between the final hidden states, normalized to lie in the range [0, 1] by taking the exponent of the negative manhattan distance
+        return torch.exp((-1)*torch.sum(torch.abs(hidden_q1 - hidden_q2), dim=1))
+        
     
 dataset = SemanticDataset('data/question_ids.txt', 'data/datapoints.txt')
-train_dataloader = DataLoader(dataset, batch_size=2, shuffle=False, collate_fn=PadSequence())
+train_dataloader = DataLoader(dataset, batch_size=128, shuffle=False, collate_fn=PadSequence())
 GLOVE_FILEPATH = 'glove_embeddings/glove.6B.100d.txt'
 classifier = RNN_model(GLOVE_FILEPATH)
 
-for batch in train_dataloader:
-    print(batch)
-    x = classifier(batch)
+for x,y in train_dataloader:
+    v = classifier(x)
+    print(v.shape)
     
+    sys.exit(0)
     break
    

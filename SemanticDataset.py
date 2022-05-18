@@ -52,10 +52,9 @@ class SemanticDataset(Dataset):
         qid1 = self.datapoints[idx][0]
         qid2 = self.datapoints[idx][1]
         label = self.datapoints[idx][2]
-        question1 = word_tokenize(self.question_ids[qid1]) # tokenize the question into a list of words
-        question2 = word_tokenize(self.question_ids[qid2])
-        print("question1:", question1, " with length:", len(question1))
-        print("question2:", question2, " with length:", len(question2))
+        # Turn the question into lowercase and tokenize it
+        question1 = word_tokenize(self.question_ids[qid1].lower()) 
+        question2 = word_tokenize(self.question_ids[qid2].lower())
         return [question1, question2], label    
         
     
