@@ -7,6 +7,7 @@ import numpy as np
 from SemanticDataset import SemanticDataset
 from torch.nn.utils import clip_grad_norm_
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
 
 
 PADDING_WORD = '<PAD>'
@@ -123,8 +124,15 @@ class RNN_model(nn.Module):
     
     def train_model(self, sentences, labels, epochs, batch_size = 256):
         
-        dataset = SemanticDataset(question_id_path=QUESTION_ID_PATH, datapoints = sentences, labels=labels) # create a dataset
-        data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=PadSequence()) # create a dataloader
+        train_sentences, val_sentences, train_labels, val_labels = train_test_split(sentences, labels, test_size=0.15, random_state=42)
+        
+        dataset_train = SemanticDataset(question_id_path=QUESTION_ID_PATH, datapoints = train_sentences, labels=train_labels) # create a dataset
+        data_loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, collate_fn=PadSequence()) # create a dataloader
+
+        dataset_validation = SemanticDataset(question_id_path=QUESTION_ID_PATH, datapoints = val_sentences, labels=val_labels) # create a dataset
+        data_loader_validation = DataLoader(dataset_validation, batch_size=len(val_sentences), shuffle=True, collate_fn=PadSequence()) # create a dataloader
+
+        validation_losses = []
 
         # Define the loss function
         criterion = nn.MSELoss()
@@ -133,7 +141,7 @@ class RNN_model(nn.Module):
 
         for epoch in range(epochs):
             self.train()
-            for x,y in tqdm(data_loader, desc="Epoch {}".format(epoch)):
+            for x,y in tqdm(data_loader_train, desc="Epoch {}".format(epoch)):
                 optimizer.zero_grad()
                 y_pred = self(x)
                 
@@ -145,8 +153,19 @@ class RNN_model(nn.Module):
                 clip_grad_norm_(self.parameters(), 5)
                 optimizer.step()
                 
-            print("Epoch {}: Loss {}".format(epoch, loss))
-        
+            print("Epoch {}: Training loss {}".format(epoch, loss))
+
+            # calculate validation loss
+            with torch.no_grad():
+                self.eval()
+                for x_val, y_val in data_loader_validation:
+                    y_val_pred = self(x_val)
+                    validation_loss = criterion(y_val_pred, y_val)
+
+                validation_losses.append(validation_loss)
+                print("Epoch {}, validation loss: {}".format(epoch, validation_loss))
+
+
     def evaluate_model(self, test_data, test_labels):
         self.eval()
         dataset = SemanticDataset(question_id_path=QUESTION_ID_PATH, datapoints = test_data, labels=test_labels) # create a dataset
