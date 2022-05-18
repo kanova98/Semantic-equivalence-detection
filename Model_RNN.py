@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 import numpy as np
 from SemanticDataset import SemanticDataset
+from torch.nn.utils import clip_grad_norm_
 from tqdm import tqdm
 
 
@@ -115,19 +116,18 @@ class RNN_model(nn.Module):
         hidden_q2 = torch.cat((hidden_q2[0], hidden_q2[1]), dim=1)
         
         #Compute the similiarity between the final hidden states, normalized to lie in the range [0, 1] by taking the exponent of the negative manhattan distance
-        prob_class_1 = torch.exp((-1)*torch.sum(torch.abs(hidden_q1 - hidden_q2), dim=1))
-        prob_class_0 = 1 - prob_class_1
-        class_probs = torch.cat((prob_class_0.reshape(batch_size, 1), prob_class_1.reshape(batch_size, 1),), dim=1)
-        return class_probs 
+        prob_class_1 = ((-1)*torch.sum(torch.abs(hidden_q1 - hidden_q2), dim=1))
+        
+        return prob_class_1 
         
     
-    def train_model(self, sentences, labels, epochs, batch_size = 128):
+    def train_model(self, sentences, labels, epochs, batch_size = 256):
         
         dataset = SemanticDataset(question_id_path=QUESTION_ID_PATH, datapoints = sentences, labels=labels) # create a dataset
         data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=PadSequence()) # create a dataloader
 
         # Define the loss function
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.MSELoss()
         # Define the optimizer
         optimizer = optim.Adam(self.parameters(), lr=0.001)
 
@@ -136,15 +136,26 @@ class RNN_model(nn.Module):
             for x,y in tqdm(data_loader, desc="Epoch {}".format(epoch)):
                 optimizer.zero_grad()
                 y_pred = self(x)
-                y = torch.tensor(y)
-                loss = criterion(y_pred, y)
                 
+                y = torch.tensor(y, dtype=torch.float)
+                loss = criterion(y_pred, y)
+                print("Loss: {}".format(loss))
                 loss.backward()
+
+                clip_grad_norm_(self.parameters(), 5)
                 optimizer.step()
             print("Epoch {}: Loss {}".format(epoch, loss))
         
-    def evaluate_model(self):
-        pass
+    def evaluate_model(self, test_data, test_labels):
+        self.eval()
+        with torch.no_grad():
+            test_data = torch.tensor(test_data, dtype=torch.long)
+            test_labels = torch.tensor(test_labels, dtype=torch.float)
+            test_pred = self(test_data)
+            test_loss = F.mse_loss(test_pred, test_labels)
+            print("Test loss: {}".format(test_loss))
+            return test_loss
+        
 
     def test_input(self, sent_1, sent_2):
         print("Evaluating if " + sent_1 + " and " + sent_2 + " are semantiqually equivalent")
