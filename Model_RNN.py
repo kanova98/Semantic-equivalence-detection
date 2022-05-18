@@ -115,6 +115,16 @@ class RNN_model(nn.Module):
         return torch.exp((-1)*torch.sum(torch.abs(hidden_q1 - hidden_q2), dim=1))
         
     
+    def train(self):
+        pass
+
+    def evaluate_model(self):
+        pass
+
+    def test_input(self, sent_1, sent_2):
+        print("Evaluating if " + sent_1 + " and " + sent_2 + " are semantiqually equivalent")
+        
+
 dataset = SemanticDataset('data/question_ids.txt', 'data/datapoints.txt')
 train_dataloader = DataLoader(dataset, batch_size=128, shuffle=False, collate_fn=PadSequence())
 GLOVE_FILEPATH = 'glove_embeddings/glove.6B.100d.txt'
