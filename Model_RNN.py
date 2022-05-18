@@ -7,6 +7,7 @@ import numpy as np
 from SemanticDataset import SemanticDataset
 from torch.nn.utils import clip_grad_norm_
 from tqdm import tqdm
+from sklearn.model_selection import KFold
 
 
 PADDING_WORD = '<PAD>'
@@ -124,28 +125,35 @@ class RNN_model(nn.Module):
     def train_model(self, sentences, labels, epochs, batch_size = 256):
         
         dataset = SemanticDataset(question_id_path=QUESTION_ID_PATH, datapoints = sentences, labels=labels) # create a dataset
-        data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=PadSequence()) # create a dataloader
+        #data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=PadSequence()) # create a dataloader
 
         # Define the loss function
         criterion = nn.MSELoss()
         # Define the optimizer
         optimizer = optim.Adam(self.parameters(), lr=0.001)
 
-        for epoch in range(epochs):
-            self.train()
-            for x,y in tqdm(data_loader, desc="Epoch {}".format(epoch)):
-                optimizer.zero_grad()
-                y_pred = self(x)
-                
-                y = torch.tensor(y, dtype=torch.float)
-                loss = criterion(y_pred, y)
-                
-                loss.backward()
+        kFold = KFold(10, False, 10000) # nr splits, shuffle, random number
+        for fold, (train_samples, test_samples) in enumerate(kFold.split(dataset)):
+            k_fold_train = torch.utils.data.Subset(dataset, train_samples)
 
-                clip_grad_norm_(self.parameters(), 5)
-                optimizer.step()
+            data_loader = DataLoader(k_fold_train, batch_size=batch_size//10, shuffle=True, collate_fn=PadSequence()) # create a dataloader
+            
+            for epoch in range(epochs):
+                self.train()
+                for x,y in tqdm(data_loader, desc="Epoch {}".format(epoch)):
+                    optimizer.zero_grad()
+                    y_pred = self(x)
+                    
+                    y = torch.tensor(y, dtype=torch.float)
+                    loss = criterion(y_pred, y)
+                    
+                    loss.backward()
+
+                    clip_grad_norm_(self.parameters(), 5)
+                    optimizer.step()
                 
-            print("Epoch {}: Loss {}".format(epoch, loss))
+                print("Fold {}: Epoch {}: Loss {}".format(fold, epoch, loss))
+            print("Done with fold {}: with loss {}".format(fold, loss))
         
     def evaluate_model(self, test_data, test_labels):
         self.eval()
@@ -177,6 +185,7 @@ class RNN_model(nn.Module):
 
             overall_correct = correct_label_count_class_0 + correct_label_count_class_1
             overall_wrong = class_0_predicted_as_class_1 + class_1_predicted_as_class_0
+            print("TEST SCORES")
             print("Overall acc: " + str(overall_correct / (overall_wrong + overall_correct)))
             print("class 0 predicted as 0: " + str(correct_label_count_class_0))
             print("class 0 predicted as class 1: " + str(class_0_predicted_as_class_1))
