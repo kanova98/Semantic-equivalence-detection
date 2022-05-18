@@ -1,3 +1,4 @@
+from cProfile import label
 import sys
 import torch as torch
 import torch.nn as nn
@@ -21,7 +22,7 @@ class SemanticDataset(Dataset):
     respective questiond id as well as a file with the datapoints + label 
     given as (qid1 qid2 label)
     '''
-    def __init__(self, question_id_path, datapoint_path):
+    def __init__(self, question_id_path, datapoints, labels):
         '''
         Initializes the dataset with the given paths
         '''
@@ -33,8 +34,8 @@ class SemanticDataset(Dataset):
                 question = line_content[1]
                 self.question_ids[qid_as_int] = question
         
-        self.datapoints = np.array(pd.read_csv(datapoint_path))       # read in the data
-        
+        self.datapoints = datapoints       # read in the data
+        self.labels = labels
     def __len__(self):
         '''
         Returns the length of the dataset
@@ -51,7 +52,7 @@ class SemanticDataset(Dataset):
         '''
         qid1 = self.datapoints[idx][0]
         qid2 = self.datapoints[idx][1]
-        label = self.datapoints[idx][2]
+        label = int(self.labels[idx])
         # Turn the question into lowercase and tokenize it
         question1 = word_tokenize(self.question_ids[qid1].lower()) 
         question2 = word_tokenize(self.question_ids[qid2].lower())
@@ -59,5 +60,5 @@ class SemanticDataset(Dataset):
         
     
 
-# Main class to test
-dataset = SemanticDataset('data/question_ids.txt', 'data/datapoints.txt')
+
+

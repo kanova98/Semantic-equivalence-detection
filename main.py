@@ -1,18 +1,40 @@
+import sys
 import torch as torch
-import Model_RNN
+from Model_RNN import RNN_model
 import argparse
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
-if __name__ == "main":
+DATAPOINT_PATH = 'data/datapoints.txt'
+GLOVE_FILEPATH = 'glove_embeddings/glove.6B.100d.txt'
+EPOCHS = 10
+
+if __name__ == '__main__':
+    print("Hello World")
     parser = argparse.ArgumentParser()
     parser.add_argument("-tr", "--train", default=True)
     parser.add_argument("-te", "--test", default=True)
     parser.add_argument("-s", "--test_sent", default="")
     args = parser.parse_args()
 
-    model = Model_RNN()
-
+    model = RNN_model(glove_filepath=GLOVE_FILEPATH)
+    print(args.train)
     if args.train:
-        model.train()
+        #Read in datapoints
+        datapoints = np.array(pd.read_csv(DATAPOINT_PATH, header=None))
+        #Extract labels and sentences
+        labels = datapoints[:,-1]
+        sentences = datapoints[:,0:2]
+        
+        # Split into training and test set
+        train_sentences, test_sentences, train_labels, test_labels = train_test_split(sentences, labels, test_size=0.2, random_state=42)
+        
+        # Train the model
+        model.train_model(test_sentences, test_labels, EPOCHS)
+        
+        
+        sys.exit(0)
     else:
         model.load_model("path") # NOTE todo
     
