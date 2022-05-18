@@ -146,15 +146,17 @@ class RNN_model(nn.Module):
                 optimizer.step()
                 
             print("Epoch {}: Loss {}".format(epoch, loss))
-            
         
     def evaluate_model(self, test_data, test_labels):
         self.eval()
         dataset = SemanticDataset(question_id_path=QUESTION_ID_PATH, datapoints = test_data, labels=test_labels) # create a dataset
         data_loader = DataLoader(dataset, batch_size=256, shuffle=False, collate_fn=PadSequence()) # create a dataloader
         with torch.no_grad():
-            correct_label_count = 0
-            wrong_label_count = 0
+            correct_label_count_class_0 = 0
+            correct_label_count_class_1 = 0
+            class_0_predicted_as_class_1 = 0
+            class_1_predicted_as_class_0 = 0
+            
             for x,y in data_loader:
                 y_pred = self(x)
                 for i in range(len(y)):
@@ -163,12 +165,28 @@ class RNN_model(nn.Module):
                     else:
                         y_pred[i] = 0
                     if y[i] == y_pred[i]:
-                        correct_label_count += 1
+                        if y[i] == 0:
+                            correct_label_count_class_0 += 1
+                        else:
+                            correct_label_count_class_1 += 1
                     else:
-                        wrong_label_count += 1
-            print("Correct: {}".format(correct_label_count))
-            print("Wrong: {}".format(wrong_label_count))
-            print("Accuracy: {}".format(correct_label_count/(correct_label_count+wrong_label_count)))
+                        if y[i] == 0:
+                            class_0_predicted_as_class_1 += 1
+                        else:
+                            class_1_predicted_as_class_0 += 1
+
+            overall_correct = correct_label_count_class_0 + correct_label_count_class_1
+            overall_wrong = class_0_predicted_as_class_1 + class_1_predicted_as_class_0
+            print("Overall acc: " + str(overall_correct / (overall_wrong + overall_correct)))
+            print("class 0 predicted as 0: " + str(correct_label_count_class_0))
+            print("class 0 predicted as class 1: " + str(class_0_predicted_as_class_1))
+            print("Class 0 acc: " + str(correct_label_count_class_0 / (correct_label_count_class_0 + class_0_predicted_as_class_1)))
+
+            print("class 1 predicted as 1: " + str(correct_label_count_class_1))
+            print("class 1 predicted as class 0: " + str(class_1_predicted_as_class_0))
+            print("Class 1 acc: " + str(correct_label_count_class_1 / (correct_label_count_class_1 + class_1_predicted_as_class_0)))
+
+
 
         
         
