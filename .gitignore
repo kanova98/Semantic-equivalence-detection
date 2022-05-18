@@ -1,5 +1,6 @@
 .DS_Store
-glove_embeddings
+glove_embeddings/
+models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -116,7 +116,7 @@ class RNN_model(nn.Module):
         hidden_q2 = torch.cat((hidden_q2[0], hidden_q2[1]), dim=1)
         
         #Compute the similiarity between the final hidden states, normalized to lie in the range [0, 1] by taking the exponent of the negative manhattan distance
-        prob_class_1 = ((-1)*torch.sum(torch.abs(hidden_q1 - hidden_q2), dim=1))
+        prob_class_1 = torch.exp((-1)*torch.sum(torch.abs(hidden_q1 - hidden_q2), dim=1))
         
         return prob_class_1 
         
@@ -139,22 +139,38 @@ class RNN_model(nn.Module):
                 
                 y = torch.tensor(y, dtype=torch.float)
                 loss = criterion(y_pred, y)
-                print("Loss: {}".format(loss))
+                
                 loss.backward()
 
                 clip_grad_norm_(self.parameters(), 5)
                 optimizer.step()
+                
             print("Epoch {}: Loss {}".format(epoch, loss))
+            
         
     def evaluate_model(self, test_data, test_labels):
         self.eval()
+        dataset = SemanticDataset(question_id_path=QUESTION_ID_PATH, datapoints = test_data, labels=test_labels) # create a dataset
+        data_loader = DataLoader(dataset, batch_size=256, shuffle=False, collate_fn=PadSequence()) # create a dataloader
         with torch.no_grad():
-            test_data = torch.tensor(test_data, dtype=torch.long)
-            test_labels = torch.tensor(test_labels, dtype=torch.float)
-            test_pred = self(test_data)
-            test_loss = F.mse_loss(test_pred, test_labels)
-            print("Test loss: {}".format(test_loss))
-            return test_loss
+            correct_label_count = 0
+            wrong_label_count = 0
+            for x,y in data_loader:
+                y_pred = self(x)
+                for i in range(len(y)):
+                    if y_pred[i] > 0.5:
+                        y_pred[i] = 1
+                    else:
+                        y_pred[i] = 0
+                    if y[i] == y_pred[i]:
+                        correct_label_count += 1
+                    else:
+                        wrong_label_count += 1
+            print("Correct: {}".format(correct_label_count))
+            print("Wrong: {}".format(wrong_label_count))
+            print("Accuracy: {}".format(correct_label_count/(correct_label_count+wrong_label_count)))
+
+        
         
 
     def test_input(self, sent_1, sent_2):
