@@ -253,4 +253,9 @@ class RNN_model(nn.Module):
         
         print("Evaluating if " + sent_1 + " and " + sent_2 + " are semantiqually equivalent")
         predicted_prob = self(sentences_as_list)
-        print("The sentences are semantiqually equivalent with probability: " + str(predicted_prob.item()))
+        eval_string = ""
+        if predicted_prob > 0.5:
+            eval_string = "semantically equivalent"
+        else:
+            eval_string = "not semantically equivalent"
+        print("The sentences are semantiqually equivalent with probability: " + str(predicted_prob.item()) + " and thus classified as " + str(eval_string))
