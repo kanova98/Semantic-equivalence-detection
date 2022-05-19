@@ -10,6 +10,7 @@ from SemanticDataset import SemanticDataset
 from torch.nn.utils import clip_grad_norm_
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
+from nltk import word_tokenize
 
 
 PADDING_WORD = '<PAD>'
@@ -197,7 +198,10 @@ class RNN_model(nn.Module):
             
             for x,y in data_loader:
                 y_pred = self(x)
+
+
                 for i in range(len(y)):
+                    
                     if y_pred[i] > 0.5:
                         y_pred[i] = 1
                     else:
@@ -239,5 +243,14 @@ class RNN_model(nn.Module):
 
 
     def test_input(self, sent_1, sent_2):
-        print("Evaluating if " + sent_1 + " and " + sent_2 + " are semantiqually equivalent")
+        self.eval()
+        processed_sent_1 = word_tokenize(sent_1.lower()) + ["<PAD>" for i in range(30)]
+
+        processed_sent_2 = word_tokenize(sent_2.lower()) + ["<PAD>" for i in range(30)]
+
+        # Create a list of size (2,1,1) containing the processed sentences
+        sentences_as_list = [[processed_sent_1], [processed_sent_2]]
         
+        print("Evaluating if " + sent_1 + " and " + sent_2 + " are semantiqually equivalent")
+        predicted_prob = self(sentences_as_list)
+        print("The sentences are semantiqually equivalent with probability: " + str(predicted_prob.item()))

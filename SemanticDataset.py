@@ -33,6 +33,7 @@ class SemanticDataset(Dataset):
                 qid_as_int = int(line_content[0])
                 question = line_content[1]
                 self.question_ids[qid_as_int] = question
+
         
         self.datapoints = datapoints       # read in the data
         self.labels = labels
@@ -41,6 +42,12 @@ class SemanticDataset(Dataset):
         Returns the length of the dataset
         '''
         return len(self.datapoints)
+    
+    def get_question(self, qid):
+        '''
+        Returns the question for the given qid
+        '''
+        return self.question_ids[qid]
     
     def __getitem__(self, idx):
         '''
