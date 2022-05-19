@@ -173,7 +173,7 @@ class RNN_model(nn.Module):
                     y_val = torch.tensor(y_val, dtype=torch.float)
                     validation_loss.append(criterion(y_val_pred, y_val))
 
-                validation_loss = torch.mean(validation_loss)
+                validation_loss = np.mean(validation_loss)
 
                 if validation_loss < prev_best_val_loss:
                     prev_best_val_loss = validation_loss
@@ -225,9 +225,18 @@ class RNN_model(nn.Module):
             print("Class 1 acc: " + str(correct_label_count_class_1 / (correct_label_count_class_1 + class_1_predicted_as_class_0)))
 
 
+            precision_class_0 = correct_label_count_class_0 / (correct_label_count_class_0 + class_1_predicted_as_class_0)
+            precision_class_1 = correct_label_count_class_1 / (correct_label_count_class_1 + class_0_predicted_as_class_1)
 
-        
-        
+            print("Precision class 0: " + str(precision_class_0))
+            print("Precision class 1: " + str(precision_class_1))
+
+            recall_class_0 = correct_label_count_class_0 / (correct_label_count_class_0 + class_0_predicted_as_class_1)
+            recall_class_1 = correct_label_count_class_1 / (correct_label_count_class_1 + class_1_predicted_as_class_0)
+
+            print("Recall class 0: " + str(recall_class_0))
+            print("Recall class 1: " + str(recall_class_1))
+
 
     def test_input(self, sent_1, sent_2):
         print("Evaluating if " + sent_1 + " and " + sent_2 + " are semantiqually equivalent")
