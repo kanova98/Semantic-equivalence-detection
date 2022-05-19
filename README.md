@@ -1,6 +1,6 @@
 # Semantic-equivalence-detection
 
-Project using a Siamese Gru architecture with pretrained glove embeddings to train a classifier capable of detecting if two questions are semantically equivalent.
+Project using a Siamese GRU architecture with pretrained glove embeddings to train a classifier capable of detecting if two questions are semantically equivalent. 
 
 
 To run this code:
