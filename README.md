@@ -1,5 +1,8 @@
 # Semantic-equivalence-detection
 
+Project using a Siamese Gru architecture with pretrained glove embeddings to train a classifier capable of detecting if two questions are semantically equivalent.
+
+
 To run this code:
 
 1. First download Glove word embeddings from: http://nlp.stanford.edu/data/glove.6B.zip and then specify the path in main.py to the one you want to use
